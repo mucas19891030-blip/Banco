@@ -53,13 +53,14 @@ function formatDate(dateString) {
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('transferForm');
 
-    form.addEventListener('submit', function(e) {
+    form.addEventListener('submit', async function(e) {
         e.preventDefault();
 
         const fromEmail = document.getElementById('fromEmail').value.trim();
         const toEmail = document.getElementById('toEmail').value.trim();
         const value = parseFloat(document.getElementById('value').value);
 
+        // Validações
         if (!fromEmail || !toEmail || !value) {
             showNotification('Preencha todos os campos', 'error');
             return;
@@ -75,18 +76,38 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        const success = App.transfer(fromEmail, toEmail, value);
+        // Prepara os dados para enviar
+        const formData = new FormData();
+        formData.append('fromEmail', fromEmail);
+        formData.append('toEmail', toEmail);
+        formData.append('valor', value);
 
-        if (success) {
-            showNotification(`Transferência de ${formatCurrency(value)} realizada com sucesso!`, 'success');
-            
-            form.reset();
-            
-            setTimeout(() => {
-                window.location.href = 'index.html';
-            }, 2000);
-        } else {
-            showNotification('Erro ao realizar transferência. Verifique os emails e o saldo.', 'error');
+        try {
+            // Faz a requisição para o PHP
+            const response = await fetch('../banco.php/transfer.php', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                showNotification(
+                    `Transferência de ${formatCurrency(value)} realizada com sucesso para ${toEmail}!`,
+                    'success'
+                );
+                
+                form.reset();
+                
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 2000);
+            } else {
+                showNotification(data.message, 'error');
+            }
+        } catch (error) {
+            console.error("Erro:", error);
+            showNotification('Erro ao conectar com o servidor. Verifique se o XAMPP está rodando.', 'error');
         }
     });
 });
